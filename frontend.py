@@ -60,11 +60,11 @@ class StartWindow:
     def define_action(self, position):
         x, y = position
         if 65 < x < 142 and 239 < y < 362:
-            MainSnake(self.screen, 'low', 15, 15, self.patch)
+            return self.screen, 'low', self.patch, 7
         elif 265 < x < 342 and 239 < y < 362:
-            MainSnake(self.screen, 'medium', 15, 15, self.patch)
+            return self.screen, 'medium', self.patch, 8
         elif 465 < x < 542 and 239 < y < 362:
-            MainSnake(self.screen, 'hard', 15, 15, self.patch)
+            return self.screen, 'hard', self.patch, 9
         elif 0 < x < 600 and 600 < y < 640:
             if self.patch:
                 self.patch = False
@@ -77,69 +77,28 @@ class StartWindow:
 
 
 class MainSnake(StartWindow):
-    def __init__(self, screen, level, width, height, patch):
+    def __init__(self, screen, level, width, height, patch, fps):
         self.patch = patch
         if self.patch:
             self.food = "images\\MC.png"
         else:
             self.food = "images\\apple_for_snake.png"
         self.screen = screen
+        self.fps = fps
         self.screen.fill('white')
         self.level = level
         self.width = width
         self.height = height
         self.apple_x = 0
         self.apple_y = 0
-        self.main_x = 0
         self.main_y = 0
-        self.amount_apple = -1
+        self.amount_apple = 0
         self.snake_color = (0, 255, 0)
         self.snake_coords = [(280, 240), (280, 280), (280, 320)]
         self.obstacle_coords = [(80, 80), (80, 480), (480, 80), (480, 480)]
         self.length = 3
         self.cell_size = 40
         self.render()
-        self.random_apple()
-        running_game = True
-        closing = False
-        start = False
-        self.fps = 5
-        clock = pygame.time.Clock()
-        while running_game:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running_game = False
-                    closing = True
-                if event.type == pygame.KEYDOWN:
-                    all_keys = pygame.key.get_pressed()
-                    if all_keys[pygame.K_RIGHT] or all_keys[pygame.K_d]:
-                        self.main_x = 40
-                        self.main_y = 0
-                        start = True
-                    elif all_keys[pygame.K_UP] or all_keys[pygame.K_w]:
-                        self.main_x = 0
-                        self.main_y = -40
-                        start = True
-                    elif all_keys[pygame.K_DOWN] or all_keys[pygame.K_s]:
-                        self.main_x = 0
-                        self.main_y = 40
-                        start = True
-                    elif all_keys[pygame.K_LEFT] or all_keys[pygame.K_a]:
-                        self.main_x = -40
-                        self.main_y = 0
-                        start = True
-                    else:
-                        pass
-            if start:
-                clock.tick(self.fps)
-                running_game = self.move_snake(self.main_x, self.main_y)
-            self.render()
-            pygame.display.flip()
-        if closing:
-            StartWindow(self.patch)
-        else:
-            GameOverWindow(self.screen, self.amount_apple,
-                           self.level, self.patch)
 
     def draw_snake(self):
         for coord in self.snake_coords:
@@ -226,14 +185,6 @@ class MainSnake(StartWindow):
         self.snake_coords.insert(0, (new_coord_x, new_coord_y))
         if (self.apple_x, self.apple_y) in self.snake_coords:
             self.length += 1
-            if self.level == 'low':
-                if self.amount_apple % 3 == 0:
-                    self.fps += 1
-            elif self.level == 'medium':
-                if self.amount_apple % 2 == 0:
-                    self.fps += 1
-            else:
-                self.fps += 1
             self.random_apple()
         elif not 0 <= self.snake_coords[0][0] < 600 or not \
             0 <= self.snake_coords[0][1] < 600 or \
@@ -249,7 +200,8 @@ class MainSnake(StartWindow):
 
 
 class GameOverWindow(MainSnake):
-    def __init__(self, screen, amount_apple, level, patch):
+    def __init__(self, screen, amount_apple, level, patch, fps):
+        self.fps = fps
         self.patch = patch
         self.level = level
         self.screen = screen
@@ -259,14 +211,6 @@ class GameOverWindow(MainSnake):
         self.back_on_start_window()
         self.quit()
         self.counting_results(amount_apple, level)
-        running_last = True
-        while running_last:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    running_last = False
-                if event.type == pygame.MOUSEBUTTONDOWN:
-                    running_last = self.last_define_action(event.pos)
-            pygame.display.flip()
 
     def back_on_start_window(self):
         pygame.draw.rect(self.screen, pygame.Color(
@@ -292,9 +236,9 @@ class GameOverWindow(MainSnake):
     def last_define_action(self, position):
         x, y = position
         if 10 < x < 510 and 10 < y < 110:
-            StartWindow(self.patch)
+            return self.patch
         elif 10 < x < 510 and 120 < y < 220:
-            MainSnake(self.screen, self.level, 15, 15, self.patch)
+            return self.screen, 'hard', self.patch, self.fps
         elif 10 < x < 510 and 230 < y < 330:
             exit()
 
@@ -317,13 +261,70 @@ class GameOverWindow(MainSnake):
 
 
 if __name__ == '__main__':
+    window = 'StartWindow'
     start_window = StartWindow(False)
     running = True
+    main_x = 0
+    main_y = 0
+    fps = 5
+    start = False
+    clock = pygame.time.Clock()
     while running:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
-            if event.type == pygame.MOUSEBUTTONDOWN:
-                start_window.define_action(event.pos)
+            if window == 'StartWindow':
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    values = start_window.define_action(
+                        event.pos)
+                    if values is not None:
+                        screen, level, patch, fps = values
+                        main_snake = MainSnake(
+                            screen, level, 15, 15, patch, fps)
+                        window = 'MainWindow'
+                        start = False
+            elif window == 'MainWindow':
+                if event.type == pygame.KEYDOWN:
+                    all_keys = pygame.key.get_pressed()
+                    if all_keys[pygame.K_RIGHT] or all_keys[pygame.K_d]:
+                        main_x = 40
+                        main_y = 0
+                        start = True
+                    elif all_keys[pygame.K_UP] or all_keys[pygame.K_w]:
+                        main_x = 0
+                        main_y = -40
+                        start = True
+                    elif all_keys[pygame.K_DOWN] or all_keys[pygame.K_s]:
+                        main_x = 0
+                        main_y = 40
+                        start = True
+                    elif all_keys[pygame.K_LEFT] or all_keys[pygame.K_a]:
+                        main_x = -40
+                        main_y = 0
+                        start = True
+                    else:
+                        pass
+            else:
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    new_window_values = game_over_window.last_define_action(
+                        event.pos)
+                    if new_window_values is not None:
+                        if not new_window_values:
+                            StartWindow(patch)
+                            window = 'StartWindow'
+                        else:
+                            screen, level, patch, fps = values
+                            main_snake = MainSnake(
+                                screen, level, 15, 15, patch, fps)
+                            window = 'MainWindow'
+                            start = False
+        if start and window == 'MainWindow':
+            clock.tick(fps)
+            running_game = main_snake.move_snake(main_x, main_y)
+            main_snake.render()
+            if not running_game:
+                game_over_window = GameOverWindow(
+                    screen, main_snake.amount_apple, level, patch, fps)
+                window = 'GameOverWindow'
         pygame.display.flip()
     pygame.quit()
