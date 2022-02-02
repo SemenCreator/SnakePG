@@ -236,7 +236,7 @@ class GameOverWindow(MainSnake):
     def last_define_action(self, position):
         x, y = position
         if 10 < x < 510 and 10 < y < 110:
-            return self.patch
+            return False
         elif 10 < x < 510 and 120 < y < 220:
             return self.screen, 'hard', self.patch, self.fps
         elif 10 < x < 510 and 230 < y < 330:
